@@ -62,6 +62,10 @@ def read_requirements_txt(file_path: str) -> List[str]:
     """
     try:
         with open(file_path, "r") as f:
+            # The split chain handles ==, >=, <=, >, and <, in that order, and
+            # nothing else. A ~= or != pin keeps its version text attached to the
+            # name I send to the NVD, extras in brackets stay on the name, and an
+            # environment marker after a semicolon rides along too.
             dependencies = [line.strip().split("==")[0].split(">=")[0].split("<=")[0].split(">")[0].split("<")[0] for line in f if line.strip() and not line.startswith("#")]
         return dependencies
     except FileNotFoundError:
@@ -137,6 +141,11 @@ def get_vulnerabilities(dependency: str, api_key: Optional[str] = None) -> List[
         headers["apiKey"] = api_key
 
     params = {
+        # The request asks for one results page of 200 and never follows up,
+        # so a common name with more matches than that is silently judged on
+        # the first page only. The parameter name is also the older API
+        # spelling; if the service rejects it, every dependency reads as an
+        # error and then as an empty vulnerability list.
         "keyword": dependency,
         "resultsPerPage": 200  # Adjust as needed
     }
@@ -186,6 +195,11 @@ def analyze_vulnerabilities(vulnerabilities: List[Dict], severity_threshold: str
 
         # Prioritize v3.1, then v3.0, then v2.0
         if cvss_metric_v31:
+            # I always take element zero of whichever metric list exists, with no
+            # check of whether that entry is the primary assessment or a secondary
+            # one from another provider. The v2 branch reads baseSeverity from
+            # cvssData, where v2 does not put it, so v2 only records filter out
+            # here and print as N/A in the duplicated logic in generate_report.
             base_severity = cvss_metric_v31[0].get("cvssData", {}).get("baseSeverity")
         elif cvss_metric_v3:
             base_severity = cvss_metric_v3[0].get("cvssData", {}).get("baseSeverity")
@@ -221,6 +235,9 @@ def generate_report(dependency: str, vulnerabilities: List[Dict]) -> str:
     for vulnerability in vulnerabilities:
         cve_item = vulnerability.get("cve")
         cve_id = cve_item.get("id", "N/A")
+        # descriptions[0] is whichever language entry the API lists first.
+        # Nothing selects for English, so a report can quote a non English
+        # description while every other field is in English.
         description = cve_item.get("descriptions", [{}])[0].get("value", "N/A")
         metrics = cve_item.get("metrics", {})
 
