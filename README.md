@@ -9,9 +9,11 @@ A command-line tool to check if project dependencies (requirements.txt, package.
 
 ## Parameters
 - `-h`: Show help message and exit
-- `--api_key`: No description provided
-- `--output`: No description provided
-- `--severity_threshold`: No description provided
+- `--api_key`: Optional NVD API key override. The primary route is the `NVD_API_KEY` environment variable; set that instead of passing the key on the command line where possible. The key is sent in the `apiKey` header.
+- `--output`: Path to the output file (optional, defaults to console). It must not be the dependency file itself.
+- `--severity_threshold`: Minimum severity level to report (CRITICAL, HIGH, MEDIUM, LOW). Defaults to HIGH.
+
+Dependency versions are read from requirements.txt, package.json, and pom.xml, sent with the NVD API 2.0 `keywordSearch` parameter, and returned entries are filtered by affected CPE product and version range before they are reported. Results are paginated to `totalResults`.
 
 ## License
 Copyright (c) ShadowGuardAI
